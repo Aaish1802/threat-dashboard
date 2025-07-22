@@ -1,40 +1,44 @@
 import streamlit as st
-import pandas as pd
 import sqlite3
-import os
+import pandas as pd
 
-st.title("Threat Intelligence Dashboard")
+st.set_page_config(page_title="Threat Intelligence Dashboard", layout="wide")
 
-# Optional Debug Check (shows files in the current directory)
-st.write("Files in current directory:", os.listdir())
+st.title("🔍 Threat Intelligence Dashboard")
 
-# Check if DB file exists before connecting
-db_file = "threat_feeds.db"
+# Connect to the local SQLite database
+conn = sqlite3.connect("threat_feeds.db")
+cursor = conn.cursor()
 
-if not os.path.exists(db_file):
-    st.error(f"Database file '{db_file}' not found in current directory!")
-else:
-    try:
-        # Connect to database
-        conn = sqlite3.connect(db_file)
-        cursor = conn.cursor()
+# Check if the table exists
+try:
+    cursor.execute("SELECT * FROM Classified_threats")
+    rows = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    df = pd.DataFrame(rows, columns=columns)
+except Exception as e:
+    st.error(f"Error accessing database: {e}")
+    st.stop()
 
-        # Check available tables
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = cursor.fetchall()
-        st.write("Tables found:", tables)
+# Filters
+with st.sidebar:
+    st.header("🔎 Filters")
+    threat_types = df['Type'].unique()
+    selected_types = st.multiselect("Filter by Type", threat_types, default=threat_types)
 
-        # Make sure table exists before querying
-        if ('Classified_threats',) in tables:
-            query = "SELECT * FROM Classified_threats"
-            df = pd.read_sql_query(query, conn)
+    severities = df['Severity'].unique()
+    selected_severities = st.multiselect("Filter by Severity", severities, default=severities)
 
-            if df.empty:
-                st.warning("The table 'Classified_threats' is empty.")
-            else:
-                st.success("Data loaded successfully!")
-                st.dataframe(df)
+# Apply filters
+filtered_df = df[
+    (df['Type'].isin(selected_types)) &
+    (df['Severity'].isin(selected_severities))
+]
 
-                # Optional: Filter by severity
-                severity_filter = st.selectbox("Filter by severity", ["All"] + sorted(df["severity"].unique()))
-                if sever
+# Display filtered data
+st.subheader("📋 Filtered Threat Intelligence Feed")
+st.dataframe(filtered_df, use_container_width=True)
+
+# Charts
+st.subheader("📊 Threats by Type")
+threat_counts = filtered_
