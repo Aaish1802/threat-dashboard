@@ -10,7 +10,7 @@ st.title("Threat Intelligence Dashboard")
 
 # Connect to your SQLite database
 conn = sqlite3.connect('threat_feeds.db')
-df = pd.read_sql_query("SELECT * FROM classified_threats", conn)
+df = pd.read_sql_query("SELECT * FROM Classified_threats", conn)
 
 # Filters
 st.sidebar.header("Apply Filters")
