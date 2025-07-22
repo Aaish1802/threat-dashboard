@@ -1,38 +1,40 @@
 import streamlit as st
-import sqlite3
 import pandas as pd
-import plotly.express as px
+import sqlite3
 import os
 
-# Debug: list files to confirm if the database is available
-st.write("📁 Files in current directory:", os.listdir())
+st.title("Threat Intelligence Dashboard")
 
-# Connect to the SQLite database
-try:
-    conn = sqlite3.connect("threat_feeds.db")
-    cursor = conn.cursor()
+# Optional Debug Check (shows files in the current directory)
+st.write("Files in current directory:", os.listdir())
 
-    # Execute SQL query
-    query = "SELECT * FROM Classified_threats"
-    cursor.execute(query)
-    data = cursor.fetchall()
+# Check if DB file exists before connecting
+db_file = "threat_feeds.db"
 
-    # Get column names
-    columns = [description[0] for description in cursor.description]
+if not os.path.exists(db_file):
+    st.error(f"Database file '{db_file}' not found in current directory!")
+else:
+    try:
+        # Connect to database
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
 
-    # Convert to DataFrame
-    df = pd.DataFrame(data, columns=columns)
+        # Check available tables
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        st.write("Tables found:", tables)
 
-    # Display title and table
-    st.title("🔐 Threat Intelligence Dashboard")
-    st.dataframe(df)
+        # Make sure table exists before querying
+        if ('Classified_threats',) in tables:
+            query = "SELECT * FROM Classified_threats"
+            df = pd.read_sql_query(query, conn)
 
-    # Optional: Display a chart (you can customize this)
-    if 'threat_type' in df.columns:
-        fig = px.histogram(df, x='threat_type', title='Threat Distribution by Type')
-        st.plotly_chart(fig)
-    else:
-        st.warning("⚠️ 'threat_type' column not found in your data. Chart not generated.")
+            if df.empty:
+                st.warning("The table 'Classified_threats' is empty.")
+            else:
+                st.success("Data loaded successfully!")
+                st.dataframe(df)
 
-except Exception as e:
-    st.error(f"❌ Error loading data: {e}")
+                # Optional: Filter by severity
+                severity_filter = st.selectbox("Filter by severity", ["All"] + sorted(df["severity"].unique()))
+                if sever
