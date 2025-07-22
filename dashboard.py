@@ -1,44 +1,37 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
+import plotly.express as px
+import os
 
 st.set_page_config(page_title="Threat Intelligence Dashboard", layout="wide")
 
-st.title("🔍 Threat Intelligence Dashboard")
+# Debug: list files to confirm the database is available
+st.write("📂 Files in current directory:", os.listdir())
 
-# Connect to the local SQLite database
-conn = sqlite3.connect("threat_feeds.db")
-cursor = conn.cursor()
-
-# Check if the table exists
+# Connect to the SQLite database
 try:
-    cursor.execute("SELECT * FROM Classified_threats")
-    rows = cursor.fetchall()
-    columns = [desc[0] for desc in cursor.description]
-    df = pd.DataFrame(rows, columns=columns)
-except Exception as e:
-    st.error(f"Error accessing database: {e}")
-    st.stop()
+    conn = sqlite3.connect("threat_feeds.db")
+    cursor = conn.cursor()
 
-# Filters
-with st.sidebar:
-    st.header("🔎 Filters")
-    threat_types = df['Type'].unique()
-    selected_types = st.multiselect("Filter by Type", threat_types, default=threat_types)
+    # Execute SQL query
+    query = "SELECT * FROM Classified_threats"
+    cursor.execute(query)
+    data = cursor.fetchall()
 
-    severities = df['Severity'].unique()
-    selected_severities = st.multiselect("Filter by Severity", severities, default=severities)
+    # Get column names
+    columns = [description[0] for description in cursor.description]
 
-# Apply filters
-filtered_df = df[
-    (df['Type'].isin(selected_types)) &
-    (df['Severity'].isin(selected_severities))
-]
+    # Convert to DataFrame
+    df = pd.DataFrame(data, columns=columns)
 
-# Display filtered data
-st.subheader("📋 Filtered Threat Intelligence Feed")
-st.dataframe(filtered_df, use_container_width=True)
+    # Display title and table
+    st.title("📊 Threat Intelligence Dashboard")
+    st.dataframe(df)
 
-# Charts
-st.subheader("📊 Threats by Type")
-threat_counts = filtered_
+    # Optional chart
+    if 'threat_type' in df.columns:
+        fig = px.histogram(df, x='threat_type', title='Threat Distribution by Type')
+        st.plotly_chart(fig)
+    else:
+        s
