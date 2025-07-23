@@ -12,7 +12,7 @@ st.write("📁 Files in current directory:", os.listdir())
 
 # 🔌 Connect to SQLite DB
 try:
-    conn = sqlite3.connect("threat_feeds_updated.db")
+    conn = sqlite3.connect("threat_feeds.db")
     query = "SELECT * FROM Classified_threats"
     df = pd.read_sql_query(query, conn)
     conn.close()
