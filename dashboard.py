@@ -1,60 +1,59 @@
 import streamlit as st
-import sqlite3
 import pandas as pd
 import plotly.express as px
+import sqlite3
 import os
 
-# Set page config
-st.set_page_config(page_title="Threat Intelligence Dashboard", layout="wide")
+# 🎯 Title
+st.title("📊 Threat Intelligence Dashboard")
 
-# App title
-st.markdown("# 🧠 Threat Intelligence Dashboard")
-st.markdown("An interactive dashboard to visualize classified threat feeds from the threat intelligence database.")
+# 📂 Show current directory contents
+st.write("📁 Files in current directory:", os.listdir())
 
-# Debug: Show files in directory
-st.markdown("📁 **Files in current directory:**")
-st.json(os.listdir())
-
-# Load the SQLite database
+# 🔌 Connect to SQLite DB
 try:
-    conn = sqlite3.connect("threat_feeds.db")
-    cursor = conn.cursor()
-
-    # Query all data
+    conn = sqlite3.connect("threat_feeds_updated.db")
     query = "SELECT * FROM Classified_threats"
-    cursor.execute(query)
-    data = cursor.fetchall()
+    df = pd.read_sql_query(query, conn)
+    conn.close()
 
-    # Get column names
-    columns = [description[0] for description in cursor.description]
+    # 🎨 Add colored badges for severity
+    def severity_color(sev):
+        color = {
+            'Critical': '🔴',
+            'High': '🟠',
+            'Medium': '🟡',
+            'Low': '🟢'
+        }
+        return f"{color.get(sev, '⚪')} {sev}"
 
-    # Convert to DataFrame
-    df = pd.DataFrame(data, columns=columns)
+    df['severity'] = df['severity'].apply(severity_color)
 
-    # Success message
-    st.success("✅ Successfully loaded threat data from the database.")
+    # 🧾 Show the table
+    st.subheader("📑 Threat Table")
+    st.dataframe(df)
 
-    # Display table
-    st.subheader("📊 Threat Table")
-    st.dataframe(df, use_container_width=True)
+    # 🔍 Add Sidebar Filters
+    st.sidebar.header("🔍 Filter Threats")
+    selected_type = st.sidebar.multiselect("Select Threat Type", df['threat_type'].unique())
+    selected_severity = st.sidebar.multiselect("Select Severity", df['severity'].unique())
 
-    # Optional filter by threat type
+    if selected_type:
+        df = df[df['threat_type'].isin(selected_type)]
+    if selected_severity:
+        df = df[df['severity'].str.contains('|'.join(selected_severity))]
+
+    # 📊 Bar Chart
     if 'threat_type' in df.columns:
-        st.subheader("🔍 Filter Threats by Type")
-        selected_type = st.selectbox("Choose Threat Type", df['threat_type'].unique())
-        filtered_df = df[df['threat_type'] == selected_type]
+        fig1 = px.bar(df, x='threat_type', color='severity', title='Threat Types by Severity Count')
+        st.plotly_chart(fig1)
 
-        # Display filtered table
-        st.dataframe(filtered_df, use_container_width=True)
-
-        # Chart
-        st.subheader("📈 Threat Severity Distribution")
-        fig = px.histogram(filtered_df, x="threat_name", color="severity", barmode="group",
-                           title=f"Threats under '{selected_type}'", labels={"threat_name": "Threat"})
-        st.plotly_chart(fig, use_container_width=True)
-
-    else:
-        st.warning("⚠️ 'threat_type' column not found. Skipping chart.")
+    # 🥧 Pie Chart
+    if 'threat_type' in df.columns:
+        pie_data = df['threat_type'].value_counts().reset_index()
+        pie_data.columns = ['threat_type', 'count']
+        fig2 = px.pie(pie_data, names='threat_type', values='count', title='Threat Type Distribution')
+        st.plotly_chart(fig2)
 
 except Exception as e:
     st.error(f"❌ Error loading data: {e}")
