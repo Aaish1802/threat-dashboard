@@ -4,13 +4,13 @@ import pandas as pd
 import plotly.express as px
 import os
 
-st.set_page_config(page_title="Threat Intelligence Dashboard", layout="wide")
+st.title("📊 Threat Intelligence Dashboard")
 
-# Debug: list files to confirm the database is available
-st.write("📂 Files in current directory:", os.listdir())
+# Optional: List files in current directory for debug
+st.write("📁 Files in current directory:", os.listdir())
 
-# Connect to the SQLite database
 try:
+    # Connect to the database
     conn = sqlite3.connect("threat_feeds.db")
     cursor = conn.cursor()
 
@@ -22,16 +22,19 @@ try:
     # Get column names
     columns = [description[0] for description in cursor.description]
 
-    # Convert to DataFrame
+    # Create DataFrame
     df = pd.DataFrame(data, columns=columns)
 
-    # Display title and table
-    st.title("📊 Threat Intelligence Dashboard")
+    # Display table
+    st.subheader("📄 Threat Table")
     st.dataframe(df)
 
-    # Optional chart
+    # Optional Chart
     if 'threat_type' in df.columns:
-        fig = px.histogram(df, x='threat_type', title='Threat Distribution by Type')
+        fig = px.histogram(df, x='threat_type', title='Threats by Type')
         st.plotly_chart(fig)
     else:
-        s
+        st.warning("⚠️ 'threat_type' column not found. Skipping chart.")
+
+except Exception as e:
+    st.error(f"❌ Error loading data: {e}")
