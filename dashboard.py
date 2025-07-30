@@ -10,17 +10,13 @@ st.title("📊 Threat Intelligence Dashboard")
 # 📂 Show current directory contents
 st.write("📁 Files in current directory:", os.listdir())
 
-# 🔌 Load Asset Inventory
-asset_df = pd.read_csv("assets.csv")
-
-# 🔌 Connect to SQLite DB
+# 🔌 Connect to SQLite DB and load threats
 try:
     conn = sqlite3.connect("threat_feeds.db")
-    query = "SELECT * FROM Classified_threats"
-    df = pd.read_sql_query(query, conn)
+    df = pd.read_sql_query("SELECT * FROM Classified_threats", conn)
     conn.close()
 
-    # 🎨 Add colored severity icons
+    # 🎨 Add colored badges for severity
     def severity_color(sev):
         color = {
             'Critical': '🔴',
@@ -32,41 +28,48 @@ try:
 
     df['severity'] = df['severity'].apply(severity_color)
 
-    # 🧠 Cross-reference with asset inventory
-    merged_df = pd.merge(df, asset_df, left_on='ip_address', right_on='ip_address', how='left')
+    # 🧾 Show Threat Table
+    st.subheader("📑 Threat Table")
+    st.dataframe(df)
 
-    # ⭐ Prioritize based on criticality
-    critical_assets = merged_df[merged_df['criticality'] == 'High']
-
-    # 📑 Show the full threat table
-    st.subheader("📑 Full Threat Table")
-    st.dataframe(merged_df)
-
-    # 🔍 Sidebar filters
+    # 🔍 Sidebar Filters
     st.sidebar.header("🔍 Filter Threats")
-    selected_type = st.sidebar.multiselect("Select Threat Type", merged_df['threat_type'].unique())
-    selected_severity = st.sidebar.multiselect("Select Severity", merged_df['severity'].unique())
+    selected_type = st.sidebar.multiselect("Select Threat Type", df['threat_type'].unique())
+    selected_severity = st.sidebar.multiselect("Select Severity", df['severity'].unique())
 
     if selected_type:
-        merged_df = merged_df[merged_df['threat_type'].isin(selected_type)]
+        df = df[df['threat_type'].isin(selected_type)]
     if selected_severity:
-        merged_df = merged_df[merged_df['severity'].str.contains('|'.join(selected_severity))]
+        df = df[df['severity'].str.contains('|'.join(selected_severity))]
 
     # 📊 Bar Chart
-    if 'threat_type' in merged_df.columns:
-        fig1 = px.bar(merged_df, x='threat_type', color='severity', title='Threat Types by Severity Count')
+    if 'threat_type' in df.columns:
+        fig1 = px.bar(df, x='threat_type', color='severity', title='Threat Types by Severity Count')
         st.plotly_chart(fig1)
 
     # 🥧 Pie Chart
-    if 'threat_type' in merged_df.columns:
-        pie_data = merged_df['threat_type'].value_counts().reset_index()
+    if 'threat_type' in df.columns:
+        pie_data = df['threat_type'].value_counts().reset_index()
         pie_data.columns = ['threat_type', 'count']
         fig2 = px.pie(pie_data, names='threat_type', values='count', title='Threat Type Distribution')
         st.plotly_chart(fig2)
 
-    # 🛡️ High Criticality Asset Focus
-    st.subheader("🛡️ Threats Targeting High-Criticality Assets")
-    st.dataframe(critical_assets)
+    # 🧠 Load Asset Inventory
+    if os.path.exists("assets.csv"):
+        asset_df = pd.read_csv("assets.csv")
+
+        # ✅ Check if ip_address column exists in both dataframes
+        if 'ip_address' in df.columns and 'ip_address' in asset_df.columns:
+            merged_df = pd.merge(df, asset_df, on='ip_address', how='left')
+
+            # 💡 Show prioritized threats (High critical assets)
+            st.subheader("🚨 Prioritized Threats on High-Criticality Assets")
+            high_impact = merged_df[merged_df['criticality'] == 'High']
+            st.dataframe(high_impact[['threat_name', 'ip_address', 'role', 'criticality']])
+        else:
+            st.warning("⚠️ 'ip_address' column missing in either threat data or asset inventory.")
+    else:
+        st.warning("⚠️ 'assets.csv' not found for asset context.")
 
 except Exception as e:
     st.error(f"❌ Error loading data: {e}")
