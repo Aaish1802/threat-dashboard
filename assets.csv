@@ -1,0 +1,6 @@
+hostname,ip_address,os,role,criticality
+DC01,192.168.1.10,Windows Server,Domain Controller,High
+FIN01,192.168.1.20,Windows 10,Finance Workstation,High
+HR01,192.168.1.30,Windows 10,HR Workstation,Medium
+WEB01,192.168.1.40,Linux,Web Server,High
+MAIL01,192.168.1.50,Windows Server,Mail Server,Medium
